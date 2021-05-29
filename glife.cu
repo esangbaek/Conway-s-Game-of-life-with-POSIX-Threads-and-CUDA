@@ -47,7 +47,7 @@ void cuda_dump_index()
 uint64_t runCUDA(int rows, int cols, int gen, 
                  GameOfLifeGrid* g_GameOfLifeGrid, int display)
 {
-    cudaSetDevice(0); // DO NOT CHANGE THIS LINE 
+    cudaSetDevice(0) // DO NOT CHANGE THIS LINE 
 
     uint64_t difft;
 
