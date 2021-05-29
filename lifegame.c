@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 
+#define MAX_THREAD  4   //my own laptop option
 /*
 ##########
 #@@@@@@@@#      Problem solving example
@@ -21,7 +23,7 @@ int** tmp;
 void singleThread(int gen, int height, int width);
 //void multiThread();
 //void CUDA();
-void dump(int height, int width);
+void dump(int height, int width); 
 void nextGenPixel(int height, int width);
 int setPixel(int x, int y);
 void copyAndResetData(int height, int width);
@@ -33,6 +35,8 @@ int main(int argc, char *argv[]){
     char buffer[20];
     int x, y;
     char *x_map, *y_map;
+
+    pthread_t threads[MAX_THREAD];
 
     startTime = clock();
 
@@ -85,6 +89,7 @@ int main(int argc, char *argv[]){
         singleThread(gen, height, width);
     }else{
         //multi thread
+        //num of thread = nprocs
     }
 
     endTime = clock();
@@ -94,7 +99,6 @@ int main(int argc, char *argv[]){
         dump(height, width);
     }
     
-
     return 0;
 }
 
