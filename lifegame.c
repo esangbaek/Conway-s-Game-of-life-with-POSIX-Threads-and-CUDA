@@ -29,6 +29,8 @@ void nextGenPixel(int height, int width);
 int setPixel(int x, int y);
 void copyAndResetData(int height, int width);
 void* multiThread(void *args);
+void nextGenPixelThread(int start, int end, int width);
+void copyAndResetDataThread(int start, int end, int width);
 
 typedef struct{
     int start;
