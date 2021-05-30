@@ -19,6 +19,7 @@
 int nprocs;
 int** arr;
 int** tmp;
+pthread_barrier_t tbarrier;
 
 void singleThread(int gen, int height, int width);
 //void multiThread();
@@ -35,8 +36,6 @@ int main(int argc, char *argv[]){
     char buffer[20];
     int x, y;
     char *x_map, *y_map;
-
-    pthread_t threads[MAX_THREAD];
 
     startTime = clock();
 
@@ -88,6 +87,8 @@ int main(int argc, char *argv[]){
     }else if(nprocs == 1){
         singleThread(gen, height, width);
     }else{
+        pthread_t threads[nprocs];
+        pthread_barrier_init(&tbarrier, NULL, nprocs);
         //multi thread
         //num of thread = nprocs
     }
@@ -99,6 +100,7 @@ int main(int argc, char *argv[]){
         dump(height, width);
     }
     
+    pthread_barrier_destory(&tbarrier);
     return 0;
 }
 
