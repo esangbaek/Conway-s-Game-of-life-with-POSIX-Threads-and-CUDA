@@ -37,15 +37,16 @@ typedef struct{
     int end;
 } bound;
 
+struct timespec begin, end;
+
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
-    clock_t startTime, endTime;
     FILE *fp;
     char buffer[20];
     int x, y;
     char *x_map, *y_map;
 
-    startTime = clock();
+	clock_gettime(CLOCK_MONOTONIC, &begin);
 
     if(argc!=7){
         printf("Parameter Error!\n");
@@ -101,7 +102,7 @@ int main(int argc, char *argv[]){
         bound section[MAX_THREAD];
         int x=0;
         int y=0;
-        int div=height/nprocs;
+        int div= height/nprocs;
 
         for(int k=0;k<nprocs;k++){
             if(k == (nprocs-1)){
@@ -116,10 +117,10 @@ int main(int argc, char *argv[]){
             }
         }
 
+		pthread_barrier_init(&tbarrier, NULL, nprocs);
         for(int i=0; i<nprocs; i++){
             pthread_create(&thread[i], NULL, multiThread, &section[i]);
         }
-        pthread_barrier_init(&tbarrier, NULL, nprocs);
 
         for(int j=0; j<nprocs; j++){
             pthread_join(thread[j], NULL);
@@ -127,8 +128,8 @@ int main(int argc, char *argv[]){
         //num of thread = nprocs
     }
 
-    endTime = clock();
-    printf("Execution time : %2.3f sec\n",(float)(endTime-startTime)/CLOCKS_PER_SEC);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+	printf("Execution time : %2.3f sec\n",(end.tv_sec - begin.tv_sec)+(end.tv_nsec-begin.tv_nsec)/1000000000.0);
 
     if(display == 1){
         dump(height, width);
@@ -155,42 +156,42 @@ void singleThread(){
     }
 }
 
-void nextGenPixel(int height, int width){
-    for(int i=1;i<=height;i++){
-        for(int j=1;j<=width;j++){
+void nextGenPixel(int heightP, int widthP){
+    for(int i=1;i<=heightP;i++){
+        for(int j=1;j<=widthP;j++){
             tmp[i][j] = setPixel(i, j);
         }
     }
 }
 
-void nextGenPixelThread(int start, int end, int width){
+void nextGenPixelThread(int start, int end, int widthP){
     int head = start;
     if(head == 0){
         head = 1;
     }
     for(int i=head; i<=end; i++){
-        for(int j=1; j<=width; j++){
+        for(int j=1; j<=widthP; j++){
             tmp[i][j]=setPixel(i,j);
         }
     }
 }
 
-void copyAndResetData(int height, int width){
-    for(int a=0;a<height+2;a++){
-        for(int b=0;b<width+2;b++){
+void copyAndResetData(int heightP, int widthP){
+    for(int a=0;a<heightP+2;a++){
+        for(int b=0;b<widthP+2;b++){
             arr[a][b] = tmp[a][b];
             tmp[a][b] = 0;
         }
     }
 }
 
-void copyAndResetDataThread(int start, int end, int width){
+void copyAndResetDataThread(int start, int end, int widthP){
     int tail = end;
     if(tail == height){
         tail +=2;
     }
     for(int a=start; a<tail; a++){
-        for(int b=0; b<width+2; b++){
+        for(int b=0; b<widthP+2; b++){
             arr[a][b] = tmp[a][b];
             tmp[a][b] = 0;
         }
@@ -211,12 +212,12 @@ int setPixel(int x, int y){
     }
 }
 
-void dump(int height, int width){
+void dump(int heightP, int widthP){
     //   print arr info
-    printf("%d x %d matrix\n", width, height);
+    printf("%d x %d matrix\n", widthP, heightP);
     printf("========================================\n");
-    for(int a=1;a<=height;a++){
-        for(int b=1;b<=width;b++){
+    for(int a=1;a<=heightP;a++){
+        for(int b=1;b<=widthP;b++){
             if(arr[a][b]==1){
                 printf("o");
             }else{
