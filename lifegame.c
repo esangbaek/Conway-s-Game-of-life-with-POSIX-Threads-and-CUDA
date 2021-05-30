@@ -16,18 +16,19 @@
 ##########
 */
 
-int nprocs;
+int nprocs, display, gen, width, height;
 int** arr;
 int** tmp;
 pthread_barrier_t tbarrier;
 
-void singleThread(int gen, int height, int width);
+void singleThread();
 //void multiThread();
 //void CUDA();
 void dump(int height, int width); 
 void nextGenPixel(int height, int width);
 int setPixel(int x, int y);
 void copyAndResetData(int height, int width);
+void* multiThread(void *args);
 
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
@@ -43,8 +44,6 @@ int main(int argc, char *argv[]){
         printf("Parameter Error!\n");
         printf("./glife <input file> <display> <nprocs> <# of generation> <width> <height>\n");
     }
-
-    int display, gen, width, height;
 
     display = atoi(argv[2]);
     nprocs = atoi(argv[3]);
@@ -84,14 +83,22 @@ int main(int argc, char *argv[]){
 
     if(nprocs == 0){
         //CUDA
+
     }else if(nprocs == 1){
-        singleThread(gen, height, width);
+        //SINGLE THREAD
+
+        singleThread();
     }else{
-        for(int i=0;i<nprocs;i++){
-            //pthread_create(&thread[i], NULL, 함수, NULL);
+        //NULTI THREAD
+
+        for(int i=0; i<nprocs; i++){
+            pthread_create(&thread[i], NULL, multiThread, NULL);
         }
         pthread_barrier_init(&tbarrier, NULL, nprocs);
-        //multi thread
+
+        for(int j=0; j<nprocs; j++){
+            pthread_join(thread[j], NULL);
+        }
         //num of thread = nprocs
     }
 
@@ -102,11 +109,15 @@ int main(int argc, char *argv[]){
         dump(height, width);
     }
     
-    pthread_barrier_destory(&tbarrier);
+    pthread_barrier_destroy(&tbarrier);
     return 0;
 }
 
-void singleThread(int gen, int height, int width){
+void* multiThread(void *args){
+    pthread_barrier_wait(&tbarrier);
+}
+
+void singleThread(){
     for(int i=0;i<gen;i++){
         nextGenPixel(height, width);
         copyAndResetData(height, width);

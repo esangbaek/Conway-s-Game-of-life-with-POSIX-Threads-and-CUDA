@@ -35,6 +35,6 @@ int main(int argc, char *argv[]){
 	}
 
     pthread_barrier_destroy(&barrier);
-   free(a); 
+    free(a); 
     return 0;
 }
