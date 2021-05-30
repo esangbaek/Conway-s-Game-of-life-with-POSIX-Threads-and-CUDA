@@ -8,22 +8,33 @@
 pthread_barrier_t barrier;
 
 void* wait(void *args){
+	int n = *(int *)args;
     printf("Before barrier\n");
+	printf("-->%d\n",n);
     pthread_barrier_wait(&barrier);
     printf("After barrier\n");
 }
 
 int main(int argc, char *argv[]){
     int num = atoi(argv[1]);
-
-    pthread_t thread[8];
+	printf("num : %d\n",num);
+    pthread_t thread[4];
     pthread_barrier_init(&barrier, NULL, num);
-
+	
+	int *a = malloc(sizeof(int*)*10);
     for(int i=0;i<num;i++){
-        pthread_create(&thread[i], NULL, wait, NULL);
+		a[i] = i;
+		printf("create %d\n", a[i]);
+        pthread_create(&thread[i], NULL, wait, &a[i]);
     }
 
+	for(int j=0; j<num; j++){
+		if(pthread_join(thread[j],NULL) != 0){
+			printf("join error\n");
+		}
+	}
+
     pthread_barrier_destroy(&barrier);
-    
+   free(a); 
     return 0;
 }
