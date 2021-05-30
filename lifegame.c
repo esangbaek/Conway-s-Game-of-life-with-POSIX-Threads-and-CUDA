@@ -30,6 +30,11 @@ int setPixel(int x, int y);
 void copyAndResetData(int height, int width);
 void* multiThread(void *args);
 
+typedef struct{
+    int start;
+    int end;
+} bound;
+
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     clock_t startTime, endTime;
@@ -90,9 +95,27 @@ int main(int argc, char *argv[]){
         singleThread();
     }else{
         //NULTI THREAD
+        //Divide height into nprocs pieces
+        bound section[MAX_THREAD];
+        int x=0;
+        int y=0;
+        int div=height/nprocs;
+
+        for(int k=0;k<nprocs;k++){
+            if(k == (nprocs-1)){
+                y = height;
+                section[k].start = x;
+                section[k].end = y;
+            }else{
+                y+=div;
+                section[k].start = x;
+                section[k].end = y;
+                x+=div;
+            }
+        }
 
         for(int i=0; i<nprocs; i++){
-            pthread_create(&thread[i], NULL, multiThread, NULL);
+            pthread_create(&thread[i], NULL, multiThread, &section[i]);
         }
         pthread_barrier_init(&tbarrier, NULL, nprocs);
 
@@ -114,7 +137,13 @@ int main(int argc, char *argv[]){
 }
 
 void* multiThread(void *args){
-    pthread_barrier_wait(&tbarrier);
+    //get args with struct
+    bound *section = (bound*)args;
+    for(int i=0;i<gen;i++){
+        nextGenPixelThread(section[0].start, section[0].end, width);
+        copyAndResetDataThread(section[0].start, section[0].end, width);
+        pthread_barrier_wait(&tbarrier);
+    }
 }
 
 void singleThread(){
@@ -132,6 +161,40 @@ void nextGenPixel(int height, int width){
     }
 }
 
+void nextGenPixelThread(int start, int end, int width){
+    int head = start;
+    if(head == 0){
+        head = 1;
+    }
+    for(int i=head; i<=end; i++){
+        for(int j=1; j<=width; j++){
+            tmp[i][j]=setPixel(i,j);
+        }
+    }
+}
+
+void copyAndResetData(int height, int width){
+    for(int a=0;a<height+2;a++){
+        for(int b=0;b<width+2;b++){
+            arr[a][b] = tmp[a][b];
+            tmp[a][b] = 0;
+        }
+    }
+}
+
+void copyAndResetDataThread(int start, int end, int width){
+    int tail = end;
+    if(tail == height){
+        tail +=2;
+    }
+    for(int a=start; a<tail; a++){
+        for(int b=0; b<width+2; b++){
+            arr[a][b] = tmp[a][b];
+            tmp[a][b] = 0;
+        }
+    }
+}
+
 int setPixel(int x, int y){
     //live cell with 2 or 3 neighbors -> keep live
     //dead cell with 3 neighbors -> revive
@@ -143,15 +206,6 @@ int setPixel(int x, int y){
         return 1;
     }else{
         return 0;
-    }
-}
-
-void copyAndResetData(int height, int width){
-    for(int a=0;a<height+2;a++){
-        for(int b=0;b<width+2;b++){
-            arr[a][b] = tmp[a][b];
-            tmp[a][b]=0;
-        }
     }
 }
 
