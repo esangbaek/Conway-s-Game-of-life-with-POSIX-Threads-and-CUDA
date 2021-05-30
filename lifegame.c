@@ -30,7 +30,7 @@ int setPixel(int x, int y);
 void copyAndResetData(int height, int width);
 
 int main(int argc, char *argv[]){
-
+    pthread_t thread[MAX_THREAD];
     clock_t startTime, endTime;
     FILE *fp;
     char buffer[20];
@@ -87,7 +87,9 @@ int main(int argc, char *argv[]){
     }else if(nprocs == 1){
         singleThread(gen, height, width);
     }else{
-        pthread_t threads[nprocs];
+        for(int i=0;i<nprocs;i++){
+            //pthread_create(&thread[i], NULL, 함수, NULL);
+        }
         pthread_barrier_init(&tbarrier, NULL, nprocs);
         //multi thread
         //num of thread = nprocs
