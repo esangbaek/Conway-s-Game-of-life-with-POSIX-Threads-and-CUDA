@@ -4,16 +4,16 @@
 #include <time.h>
 #include <pthread.h>
 
-#define MAX_THREAD  4   //my own laptop option
+#define MAX_THREAD  16
 /*
-##########
-#@@@@@@@@#      Problem solving example
-#@@@@@@@@#      8 * 8 matrix
-#@@@@@@@@#      + 1px padding around matrix
-#@@@@@@@@#      and use 3 * 3 filter
-#@@@@@@@@#
-#@@@@@@@@#
-##########
+oooooooooo   
+o@@@@@@@@o      Problem solving example
+o@@@@@@@@o      8 * 8 matrix
+o@@@@@@@@o      + 1px padding around matrix
+o@@@@@@@@o      and use 3 * 3 filter
+o@@@@@@@@o
+o@@@@@@@@o
+oooooooooo
 */
 
 int nprocs, display, gen, width, height;
@@ -25,9 +25,13 @@ void singleThread();
 //void multiThread();
 //void CUDA();
 void dump(int height, int width); 
+
+//single thread
 void nextGenPixel(int height, int width);
 int setPixel(int x, int y);
 void copyAndResetData(int height, int width);
+
+//multithread
 void* multiThread(void *args);
 void nextGenPixelThread(int start, int end, int width);
 void copyAndResetDataThread(int start, int end, int width);
@@ -61,16 +65,16 @@ int main(int argc, char *argv[]){
 
     //Make matrix
     arr = (int**)malloc(sizeof(int*) * (height+2));
-    for(int i=0;i<height+2;i++){
+    for(int i=0; i<height+2; i++){
         arr[i] = (int*)malloc(sizeof(int) * (width+2));
     }
     tmp = (int**)malloc(sizeof(int*) * (height+2));
-    for(int i=0;i<height+2;i++){
+    for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
     //Initiate
-    for(int a=0;a<height+2;a++){
-        for(int b=0;b<width+2;b++){
+    for(int a=0; a<height+2; a++){
+        for(int b=0; b<width+2; b++){
             arr[a][b]=0;
             tmp[a][b]=0;
         }
@@ -104,7 +108,7 @@ int main(int argc, char *argv[]){
         int y=0;
         int div= height/nprocs;
 
-        for(int k=0;k<nprocs;k++){
+        for(int k=0; k<nprocs; k++){
             if(k == (nprocs-1)){
                 y = height;
                 section[k].start = x;
@@ -142,23 +146,26 @@ int main(int argc, char *argv[]){
 void* multiThread(void *args){
     //get args with struct
     bound *section = (bound*)args;
-    for(int i=0;i<gen;i++){
+    for(int i=0; i<gen; i++){
+
         nextGenPixelThread(section[0].start, section[0].end, width);
+		pthread_barrier_wait(&tbarrier);
+
         copyAndResetDataThread(section[0].start, section[0].end, width);
         pthread_barrier_wait(&tbarrier);
     }
 }
 
 void singleThread(){
-    for(int i=0;i<gen;i++){
+    for(int i=0; i<gen; i++){
         nextGenPixel(height, width);
         copyAndResetData(height, width);
     }
 }
 
 void nextGenPixel(int heightP, int widthP){
-    for(int i=1;i<=heightP;i++){
-        for(int j=1;j<=widthP;j++){
+    for(int i=1; i<=heightP; i++){
+        for(int j=1; j<=widthP; j++){
             tmp[i][j] = setPixel(i, j);
         }
     }
@@ -177,8 +184,8 @@ void nextGenPixelThread(int start, int end, int widthP){
 }
 
 void copyAndResetData(int heightP, int widthP){
-    for(int a=0;a<heightP+2;a++){
-        for(int b=0;b<widthP+2;b++){
+    for(int a=0; a<heightP+2; a++){
+        for(int b=0; b<widthP+2; b++){
             arr[a][b] = tmp[a][b];
             tmp[a][b] = 0;
         }
@@ -216,8 +223,8 @@ void dump(int heightP, int widthP){
     //   print arr info
     printf("%d x %d matrix\n", widthP, heightP);
     printf("========================================\n");
-    for(int a=1;a<=heightP;a++){
-        for(int b=1;b<=widthP;b++){
+    for(int a=1; a<=heightP; a++){
+        for(int b=1; b<=widthP; b++){
             if(arr[a][b]==1){
                 printf("o");
             }else{
