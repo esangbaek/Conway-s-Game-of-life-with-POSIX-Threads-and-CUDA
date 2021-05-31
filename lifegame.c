@@ -4,7 +4,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#define MAX_THREAD  16
+#define MAX_THREAD  24
 /*
 oooooooooo   
 o@@@@@@@@o      Problem solving example
