@@ -96,7 +96,7 @@ int main(int argc, char *argv[]){
     if(nprocs == 0){
         //CUDA
 
-    }else if(nprocs == 1){
+    }else if(nprocs == 100){
         //SINGLE THREAD
 
         singleThread();
