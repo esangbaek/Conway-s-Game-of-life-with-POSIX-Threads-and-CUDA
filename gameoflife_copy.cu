@@ -40,7 +40,7 @@ typedef struct{
 struct timespec begin, end;
 
 
-__global__ void my_kernel(int *mem, int *tmp, int height, int width){
+__global__ void my_kernel(int **mem, int **tmp, int height, int width){
     for(int i=1; i<=height; i++){
         for(int j=1; j<=width; j++){
             tmp[i][j]=setPixel(i,j);
@@ -49,8 +49,8 @@ __global__ void my_kernel(int *mem, int *tmp, int height, int width){
 
     for(int j=0; j< height; j++){
         for(int k=0; k<width; k++){
-            cuda_mem[j][k] = cuda_tmp[j][k];
-            cuda_tmp[j][k] = 0;
+            mem[j][k] = tmp[j][k];
+            tmp[j][k] = 0;
         }
     }
 }
