@@ -43,7 +43,7 @@ struct timespec begin, end;
 __global__ void my_kernel(int **mem, int **tmp, int height, int width){
     for(int i=1; i<=height; i++){
         for(int j=1; j<=width; j++){
-            tmp[i][j]=setPixel(i,j);
+            tmp[i][j]=setCudaPixel(i,j);
         }
     }
 
@@ -52,6 +52,20 @@ __global__ void my_kernel(int **mem, int **tmp, int height, int width){
             mem[j][k] = tmp[j][k];
             tmp[j][k] = 0;
         }
+    }
+}
+
+__device__ int setCudaPixel(int x, int y, int **mem){
+    //live cell with 2 or 3 neighbors -> keep live
+    //dead cell with 3 neighbors -> revive
+    //other cases : die
+    int current = mem[x][y];
+    int neighbor = mem[x-1][y-1]+mem[x][y-1]+mem[x+1][y-1]+mem[x+1][y]+mem[x+1][y+1]+mem[x][y+1]+mem[x-1][y+1]+mem[x-1][y];
+    
+    if((current == 1 && neighbor == 2) || (current == 1 && neighbor == 3) || (current == 0 && neighbor == 3)){
+        return 1;
+    }else{
+        return 0;
     }
 }
 
