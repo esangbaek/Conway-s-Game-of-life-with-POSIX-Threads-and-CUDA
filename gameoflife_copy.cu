@@ -40,8 +40,12 @@ typedef struct{
 struct timespec begin, end;
 
 
-__global__ void my_kernel(int *a, int start, int end, int width){
-    
+__global__ void my_kernel(int *mem, int *tmp, int height, int width){
+    for(int i=1; i<=height; i++){
+        for(int j=1; j<=width; j++){
+            tmp[i][j]=setPixel(i,j);
+        }
+    }
 }
 
 
@@ -76,7 +80,7 @@ int main(int argc, char *argv[]){
     for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
-    size = (height+2) * (width+2);
+    size = (height+2) * (width+2) * sizeof(int);
 
     //Initiate
     for(int a=0; a<height+2; a++){
@@ -112,8 +116,14 @@ int main(int argc, char *argv[]){
         //Kernel code
         for(int i=0; i<gen; i++){
             //KERNEL CODE
-            // ->
+            // ->my_kernel<<<   ,   >>>(cuda_mem, cuda_tmp, height, width);
             cudaDeviceSynchronize();
+            for(int j=0; j< height; j++){
+                for(int k=0; k<width; k++){
+                    cuda_mem[j][k] = cuda_tmp[j][k];
+                    cuda_tmp[j][k] = 0;
+                }
+            }
         }
 
         cudaMemcpy(arr, cuda_mem, size, cudaMemcpyDeviceToHost);
@@ -159,6 +169,8 @@ int main(int argc, char *argv[]){
 
     free(arr);
     free(tmp);
+    cudaFree(cuda_mem);
+    cudaFree(cuda_tmp);
 
     return 0;
 }
