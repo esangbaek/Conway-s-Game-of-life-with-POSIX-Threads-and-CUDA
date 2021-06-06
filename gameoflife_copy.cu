@@ -56,6 +56,7 @@ int main(int argc, char *argv[]){
     FILE *fp;
     char buffer[20];
     int x, y, size;
+    int *cuda_mem, *cuda_tmp;
     char *x_map, *y_map;
 
 	clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -108,7 +109,6 @@ int main(int argc, char *argv[]){
     if(nprocs == 0){
         //CUDA
 
-        int *cuda_mem, *cuda_tmp;
         cudaMalloc(&cuda_mem, size);
         cudaMalloc(&cuda_tmp, size);
         cudaMemcpy(cuda_mem, arr, size, cudaMemcpyHostToDevice);
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void* Thread(void *args){
+void *Thread(void *args){
     //get args with struct
     bound *section = (bound*)args;
     
