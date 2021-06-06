@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <cuda_runtime.h>
 
 #define MAX_THREAD  24
 /*
@@ -38,11 +39,19 @@ typedef struct{
 
 struct timespec begin, end;
 
+
+__global__ void my_kernel(int *a, int start, int end, int width){
+    
+}
+
+
+
+
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     FILE *fp;
     char buffer[20];
-    int x, y;
+    int x, y, size;
     char *x_map, *y_map;
 
 	clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -67,6 +76,7 @@ int main(int argc, char *argv[]){
     for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
+    size = (height+2) * (width+2);
 
     //Initiate
     for(int a=0; a<height+2; a++){
@@ -93,10 +103,20 @@ int main(int argc, char *argv[]){
 
     if(nprocs == 0){
         //CUDA
+
+        int *cuda_mem, *cuda_tmp;
+        cudaMalloc(&cuda_mem, size);
+        cudaMalloc(&cuda_tmp, size);
+        cudaMemcpy(cuda_mem, arr, size, cudaMemcpyHostToDevice);
         
+        //Kernel code
+        for(int i=0; i<gen; i++){
+            //KERNEL CODE
+            // ->
+            cudaDeviceSynchronize();
+        }
 
-
-
+        cudaMemcpy(arr, cuda_mem, size, cudaMemcpyDeviceToHost);
     }else{
         //SINGLE AND MULTI THREAD
         //Divide height into nprocs pieces
