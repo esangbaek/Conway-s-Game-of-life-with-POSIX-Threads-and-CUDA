@@ -57,7 +57,7 @@ __device__ int setCudaPixel(int x, int y, int **mem){
 __global__ void my_kernel(int **mem, int **tmp, int height, int width){
     for(int i=1; i<=height; i++){
         for(int j=1; j<=width; j++){
-            tmp[i][j]=setCudaPixel(i,j);
+            tmp[i][j]=setCudaPixel(i,j, mem);
         }
     }
 
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]){
         //Kernel code
         for(int i=0; i<gen; i++){
             //KERNEL CODE
-            // ->my_kernel<<<   ,   >>>(cuda_mem, cuda_tmp, height, width);
+            my_kernel<<<  1 , 1  >>>(cuda_mem, cuda_tmp, height, width);
             cudaDeviceSynchronize();
             
         }
