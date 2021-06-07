@@ -133,14 +133,7 @@ int main(int argc, char *argv[]){
         //CUDA
 
         cudaMalloc(&cuda_mem, height+2);
-        for(int i=0; i<height+2; i++){
-            cuda_mem[i] = (int*)malloc(sizeof(int) * (width+2));
-        }
-
         cudaMalloc(&cuda_tmp, width+2);
-        for(int i=0; i<height+2; i++){
-            cuda_tmp[i] = (int*)malloc(sizeof(int) * (width+2));
-        }
         cudaMemcpy(cuda_mem, arr, size, cudaMemcpyHostToDevice);
         
         //Kernel code
