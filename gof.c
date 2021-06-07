@@ -3,19 +3,17 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
-#include <cuda_runtime.h>
 
 #define MAX_THREAD  24
 /*
-     0123456789
-0    oooooooooo   
-1    o@@@@@@@@o      Problem solving example
-2    o@@@@@@@@o      8 * 6 matrix
-3    o@@@@@@@@o      + 1px padding around matrix
-4    o@@@@@@@@o      and use 3 * 3 filter
-5    o@@@@@@@@o
-6    o@@@@@@@@o
-7    oooooooooo
+oooooooooo   
+o@@@@@@@@o      Problem solving example
+o@@@@@@@@o      8 * 8 matrix
+o@@@@@@@@o      + 1px padding around matrix
+o@@@@@@@@o      and use 3 * 3 filter
+o@@@@@@@@o
+o@@@@@@@@o
+oooooooooo
 */
 
 int nprocs, display, gen, width, height;
@@ -23,6 +21,7 @@ int** arr;
 int** tmp;
 pthread_barrier_t tbarrier;
 
+//void multiThread();
 //void CUDA();
 void dump(); 
 
@@ -39,47 +38,11 @@ typedef struct{
 
 struct timespec begin, end;
 
-
-__device__ int setCudaPixel(int x, int y, int **mem){
-    //live cell with 2 or 3 neighbors -> keep live
-    //dead cell with 3 neighbors -> revive
-    //other cases : die
-    int current = mem[x][y];
-    int neighbor = mem[x-1][y-1]+mem[x][y-1]+mem[x+1][y-1]+mem[x+1][y]+mem[x+1][y+1]+mem[x][y+1]+mem[x-1][y+1]+mem[x-1][y];
-    
-    if((current == 1 && neighbor == 2) || (current == 1 && neighbor == 3) || (current == 0 && neighbor == 3)){
-        return 1;
-    }else{
-        return 0;
-    }
-}
-
-__global__ void my_kernel(int **mem, int **tmp, int height, int width){
-    for(int i=1; i<=height; i++){
-        for(int j=1; j<=width; j++){
-            tmp[i][j]=setCudaPixel(i,j,mem);
-        }
-    }
-
-    for(int j=0; j< height; j++){
-        for(int k=0; k<width; k++){
-            mem[j][k] = tmp[j][k];
-            tmp[j][k] = 0;
-        }
-    }
-}
-
-
-
-
-
-
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     FILE *fp;
     char buffer[20];
-    int x, y, size;
-    int *cuda_mem, *cuda_tmp;
+    int x, y;
     char *x_map, *y_map;
 
 	clock_gettime(CLOCK_MONOTONIC, &begin);
@@ -104,8 +67,6 @@ int main(int argc, char *argv[]){
     for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
-    size = (height+2) * (width+2) * sizeof(int);
-
     //Initiate
     for(int a=0; a<height+2; a++){
         for(int b=0; b<width+2; b++){
@@ -132,19 +93,6 @@ int main(int argc, char *argv[]){
     if(nprocs == 0){
         //CUDA
 
-        cudaMalloc(&cuda_mem, size);
-        cudaMalloc(&cuda_tmp, size);
-        cudaMemcpy(cuda_mem, arr, size, cudaMemcpyHostToDevice);
-        
-        //Kernel code
-        for(int i=0; i<gen; i++){
-            //KERNEL CODE
-            // ->my_kernel<<<   ,   >>>(cuda_mem, cuda_tmp, height, width);
-            cudaDeviceSynchronize();
-            
-        }
-
-        cudaMemcpy(arr, cuda_mem, size, cudaMemcpyDeviceToHost);
     }else{
         //SINGLE AND MULTI THREAD
         //Divide height into nprocs pieces
@@ -174,6 +122,7 @@ int main(int argc, char *argv[]){
         for(int j=0; j<nprocs; j++){
             pthread_join(thread[j], NULL);
         }
+        //num of thread = nprocs
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -184,19 +133,12 @@ int main(int argc, char *argv[]){
     }
     
     pthread_barrier_destroy(&tbarrier);
-
-    free(arr);
-    free(tmp);
-    cudaFree(cuda_mem);
-    cudaFree(cuda_tmp);
-
     return 0;
 }
 
-void *Thread(void *args){
+void* Thread(void *args){
     //get args with struct
     bound *section = (bound*)args;
-    
     for(int i=0; i<gen; i++){
 
         nextGenPixel(section[0].start, section[0].end, width);
@@ -218,7 +160,7 @@ void nextGenPixel(int start, int end, int wdth){
     }
     for(int i=head; i<tail; i++){
         for(int j=1; j<=wdth; j++){
-            tmp[i][j]=setPixel(i,j);
+            tmp[j][i]=setPixel(j,i);
         }
     }
 }
@@ -230,8 +172,8 @@ void copyAndResetData(int start, int end, int wdth){
     }
     for(int a=start; a<tail; a++){
         for(int b=0; b<wdth+2; b++){
-            arr[a][b] = tmp[a][b];
-            tmp[a][b] = 0;
+            arr[b][a] = tmp[b][a];
+            tmp[b][a] = 0;
         }
     }
 }
