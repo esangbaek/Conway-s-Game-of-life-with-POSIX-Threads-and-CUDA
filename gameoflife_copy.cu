@@ -54,7 +54,7 @@ __device__ int setCudaPixel(int x, int y, int **mem){
     }
 }
 
-__global__ void my_kernel(int **mem, int **tmp, int height, int width){
+__global__ void my_kernel(int *mem, int *tmp, int height, int width){
     for(int i=1; i<=height; i++){
         for(int j=1; j<=width; j++){
             tmp[i][j]=setCudaPixel(i,j, mem);
@@ -132,8 +132,15 @@ int main(int argc, char *argv[]){
     if(nprocs == 0){
         //CUDA
 
-        cudaMalloc(&cuda_mem, size);
-        cudaMalloc(&cuda_tmp, size);
+        cudaMalloc(&cuda_mem, height+2);
+        for(int i=0; i<height+2; i++){
+            cuda_mem[i] = (int*)malloc(sizeof(int) * (width+2));
+        }
+
+        cudaMalloc(&cuda_tmp, width+2);
+        for(int i=0; i<height+2; i++){
+            cuda_tmp[i] = (int*)malloc(sizeof(int) * (width+2));
+        }
         cudaMemcpy(cuda_mem, arr, size, cudaMemcpyHostToDevice);
         
         //Kernel code
