@@ -22,8 +22,9 @@ int nprocs, display, gen, width, height;
 int** arr;
 int** tmp;
 pthread_barrier_t tbarrier;
+struct timespec begin, end;
 
-//void CUDA();
+//CUDA
 void dump(); 
 
 //single & multi thread
@@ -37,15 +38,13 @@ typedef struct{
     int end;
 } bound;
 
-struct timespec begin, end;
-
-
-__device__ int setCudaPixel(int x, int y, int **mem){
+__device__ int cudaNeighbor(int *mem, int index, int width){
     //live cell with 2 or 3 neighbors -> keep live
     //dead cell with 3 neighbors -> revive
     //other cases : die
-    int current = mem[x][y];
-    int neighbor = mem[x-1][y-1]+mem[x][y-1]+mem[x+1][y-1]+mem[x+1][y]+mem[x+1][y+1]+mem[x][y+1]+mem[x-1][y+1]+mem[x-1][y];
+    int current = mem[index];
+    int neighbor = mem[index-width-1]+mem[index-width]+mem[index-width+1]+
+                    mem[index-1]+mem[index+1]+mem[index+width-1]+mem[index+width]+mem[index+width+1];
     
     if((current == 1 && neighbor == 2) || (current == 1 && neighbor == 3) || (current == 0 && neighbor == 3)){
         return 1;
@@ -54,30 +53,33 @@ __device__ int setCudaPixel(int x, int y, int **mem){
     }
 }
 
-__global__ void my_kernel(int **mem, int **tmp, int height, int width){
-	int x = blockIdx.x * blockDim.x + threadIdx.x;
-	int y = blockIdx.y * blockDim.y + threadIdx.y;
+__global__ void my_kernel(int *mem, int *tmp, int height, int width, int gen){
+	int index = threadIdx.x + blockIdx.x + blockDim.x;
 	
-	printf("%d\n",mem[x][y]);
-	
-	if(x < width && y < height){
-		tmp[x][y] = setCudaPixel(x, y, mem);
-		mem[x][y] = tmp[x][y];
-		tmp[x][y] = 0;
-		cudaDeviceSynchronize();
-	}
+    for(int i=0; i<gen; i++){
+        if(blockIdx.x == 0 || blockIdx.x == height-1 || threadIdx.x == 0 || threadIdx.x == width-1){
+            //Do nothing
+        }else{
+            tmp[index] = cudaNeighbor(mem, index, width);
+        }
+        mem[index] = tmp[index];
+    }
 }
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     FILE *fp;
     char buffer[20];
     int x, y, size;
+    //This is for convert 2d array to 1d
+    int *mat_1d, *mat_1d_tmp;
     int *cuda_mem, *cuda_tmp;
+
     char *x_map, *y_map;
 
     if(argc!=7){
         printf("Parameter Error!\n");
         printf("./glife <input file> <display> <nprocs> <# of generation> <width> <height>\n");
+        exit(1);
     }
 
     display = atoi(argv[2]);
@@ -95,14 +97,20 @@ int main(int argc, char *argv[]){
     for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
-
+    
+    length = (height+2) * (width+2);
     size = (height+2) * (width+2) * sizeof(int);
 
-    //Initiate
+    mat_id = (int*)malloc(size);
+    mat_id_tmp = (int*)malloc(size);
+
+    //Initialize
     for(int a=0; a<height+2; a++){
         for(int b=0; b<width+2; b++){
-            arr[a][b]=0;
-            tmp[a][b]=0;
+            arr[a][b] = 0;
+            tmp[a][b] = 0;
+            mat_id[a*(width+2)+b] = 0;
+            mat_id_tmp[a*(width+2)+b] = 0;
         }
     }
 
@@ -118,24 +126,32 @@ int main(int argc, char *argv[]){
         y = atoi(y_map);        
         x = atoi(x_map);
 
-        arr[x][y]=1;
+        arr[x][y] = 1;
+        mat_id[x*(width+2) +y] = 1;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &begin);
+
     if(nprocs == 0){
         //CUDA
 
         cudaMalloc(&cuda_mem, size);
         cudaMalloc(&cuda_tmp, size);
 
-        cudaMemcpy(&cuda_mem, arr, size, cudaMemcpyHostToDevice);
-        cudaMemcpy(&cuda_tmp, arr, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_mem, mat_1d, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(cuda_tmp, mat_1d_tmp, size, cudaMemcpyHostToDevice);
 
-	dim3 dimThread(2, 2);
-	dim3 dimBlock(10, 10);
         //Kernel code
-        my_kernel<<<  dimBlock , dimThread  >>>(&cuda_mem, &cuda_tmp, height, width);
-        cudaMemcpy(arr, &cuda_mem, size, cudaMemcpyDeviceToHost);
+        my_kernel<<<  height+2 , width+2  >>>(cuda_mem, cuda_tmp, height+2, width+2, gen);
+
+        cudaMemcpy(mat_1d, cuda_mem, size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(mat_1d_tmp, cuda_tmp, size, cudaMemcpyDeviceToHost);
+
+        for(int i=0;i<height+2;i++){
+            for(int j=0;j<width+2;j++){
+                arr[i][j] = mat_1d[i*(width+2) +j ];
+            }
+        }
     }else{
 	
         //SINGLE AND MULTI THREAD
@@ -159,6 +175,7 @@ int main(int argc, char *argv[]){
         }
 
 		pthread_barrier_init(&tbarrier, NULL, nprocs);
+
         for(int i=0; i<nprocs; i++){
             pthread_create(&thread[i], NULL, Thread, &section[i]);
         }
@@ -179,6 +196,8 @@ int main(int argc, char *argv[]){
 
     free(arr);
     free(tmp);
+    free(mat_1d);
+    free(mat_1d_tmp);
     cudaFree(cuda_mem);
     cudaFree(cuda_tmp);
 
