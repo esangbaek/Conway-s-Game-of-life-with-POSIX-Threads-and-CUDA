@@ -69,7 +69,7 @@ int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     FILE *fp;
     char buffer[20];
-    int x, y, size;
+    int x, y, size, length;
     //This is for convert 2d array to 1d
     int *mat_1d, *mat_1d_tmp;
     int *cuda_mem, *cuda_tmp;
@@ -101,16 +101,16 @@ int main(int argc, char *argv[]){
     length = (height+2) * (width+2);
     size = (height+2) * (width+2) * sizeof(int);
 
-    mat_id = (int*)malloc(size);
-    mat_id_tmp = (int*)malloc(size);
+    mat_1d = (int*)malloc(size);
+    mat_1d_tmp = (int*)malloc(size);
 
     //Initialize
     for(int a=0; a<height+2; a++){
         for(int b=0; b<width+2; b++){
             arr[a][b] = 0;
             tmp[a][b] = 0;
-            mat_id[a*(width+2)+b] = 0;
-            mat_id_tmp[a*(width+2)+b] = 0;
+            mat_1d[a*(width+2)+b] = 0;
+            mat_1d_tmp[a*(width+2)+b] = 0;
         }
     }
 
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]){
         x = atoi(x_map);
 
         arr[x][y] = 1;
-        mat_id[x*(width+2) +y] = 1;
+        mat_1d[x*(width+2) +y] = 1;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &begin);
