@@ -54,26 +54,19 @@ __device__ int setCudaPixel(int x, int y, int **mem){
     }
 }
 
-__global__ void my_kernel(int *mem, int *tmp, int height, int width){
-    for(int i=1; i<=height; i++){
-        for(int j=1; j<=width; j++){
-            tmp[i][j]=setCudaPixel(i,j, mem);
-        }
-    }
-
-    for(int j=0; j< height; j++){
-        for(int k=0; k<width; k++){
-            mem[j][k] = tmp[j][k];
-            tmp[j][k] = 0;
-        }
-    }
+__global__ void my_kernel(int **mem, int **tmp, int height, int width){
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+	
+	printf("%d\n",mem[x][y]);
+	
+	if(x < width && y < height){
+		tmp[x][y] = setCudaPixel(x, y, mem);
+		mem[x][y] = tmp[x][y];
+		tmp[x][y] = 0;
+		cudaDeviceSynchronize();
+	}
 }
-
-
-
-
-
-
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     FILE *fp;
@@ -81,8 +74,6 @@ int main(int argc, char *argv[]){
     int x, y, size;
     int *cuda_mem, *cuda_tmp;
     char *x_map, *y_map;
-
-	clock_gettime(CLOCK_MONOTONIC, &begin);
 
     if(argc!=7){
         printf("Parameter Error!\n");
@@ -104,6 +95,7 @@ int main(int argc, char *argv[]){
     for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
+
     size = (height+2) * (width+2) * sizeof(int);
 
     //Initiate
@@ -129,23 +121,23 @@ int main(int argc, char *argv[]){
         arr[x][y]=1;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &begin);
     if(nprocs == 0){
         //CUDA
 
-        cudaMalloc(&cuda_mem, height+2);
-        cudaMalloc(&cuda_tmp, width+2);
-        cudaMemcpy(cuda_mem, arr, size, cudaMemcpyHostToDevice);
-        
-        //Kernel code
-        for(int i=0; i<gen; i++){
-            //KERNEL CODE
-            my_kernel<<<  1 , 1  >>>(cuda_mem, cuda_tmp, height, width);
-            cudaDeviceSynchronize();
-            
-        }
+        cudaMalloc(&cuda_mem, size);
+        cudaMalloc(&cuda_tmp, size);
 
-        cudaMemcpy(arr, cuda_mem, size, cudaMemcpyDeviceToHost);
+        cudaMemcpy(&cuda_mem, arr, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(&cuda_tmp, arr, size, cudaMemcpyHostToDevice);
+
+	dim3 dimThread(2, 2);
+	dim3 dimBlock(10, 10);
+        //Kernel code
+        my_kernel<<<  dimBlock , dimThread  >>>(&cuda_mem, &cuda_tmp, height, width);
+        cudaMemcpy(arr, &cuda_mem, size, cudaMemcpyDeviceToHost);
     }else{
+	
         //SINGLE AND MULTI THREAD
         //Divide height into nprocs pieces
         bound section[MAX_THREAD];

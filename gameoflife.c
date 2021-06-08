@@ -45,7 +45,6 @@ int main(int argc, char *argv[]){
     int x, y;
     char *x_map, *y_map;
 
-	clock_gettime(CLOCK_MONOTONIC, &begin);
 
     if(argc!=7){
         printf("Parameter Error!\n");
@@ -118,7 +117,10 @@ int main(int argc, char *argv[]){
             }
         }
 
-		pthread_barrier_init(&tbarrier, NULL, nprocs);
+	pthread_barrier_init(&tbarrier, NULL, nprocs);
+	
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+
         for(int i=0; i<nprocs; i++){
             pthread_create(&thread[i], NULL, Thread, &section[i]);
         }
