@@ -54,7 +54,8 @@ __device__ int cudaNeighbor(int *mem, int index, int width){
 }
 
 __global__ void my_kernel(int *mem, int *tmp, int height, int width, int gen){
-	int index = threadIdx.x + blockIdx.x + blockDim.x;
+	int index = threadIdx.x + blockIdx.x * blockDim.x;
+    printf("width %d\n", blockDim.x);
 	
     for(int i=0; i<gen; i++){
         if(blockIdx.x == 0 || blockIdx.x == height-1 || threadIdx.x == 0 || threadIdx.x == width-1){
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
     
-    length = (height+2) * (width+2);
+    //length = (height+2) * (width+2);
     size = (height+2) * (width+2) * sizeof(int);
 
     mat_1d = (int*)malloc(size);

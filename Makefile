@@ -6,7 +6,7 @@ CXX = g++
 CXXFLAGS = -Wall -std=c++0x
 TARGET = glife 
 OBJ = glife.o
-SRC = glife.cpp
+SRC = glife.c
 LIBS = -pthread -L/usr/local/cuda/lib64 -lcuda -lcudart
 .PHONY : $(TARGET) $(OBJ)
 
@@ -16,7 +16,7 @@ $(TARGET) : $(OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(SRC) $(LIBS) 
 
 $(OBJ) :
-	/usr/local/cuda/bin/nvcc -c $(GENCODE_SM61) $(GENCODE_SM70) glife.cu
+	/usr/local/cuda/bin/nvcc -c $(GENCODE_SM61) $(GENCODE_SM70) gameoflife_copy.cu
 
 clean :
 	rm *.o glife 
