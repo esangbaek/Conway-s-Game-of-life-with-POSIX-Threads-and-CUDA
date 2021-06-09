@@ -205,8 +205,7 @@ int main(int argc, char *argv[]){
     free(mat_1d_tmp);
     cudaFree(cuda_mem);
     cudaFree(cuda_tmp);
-	
-    printf("Before close\n");
+    
     return 0;
 }
 
