@@ -16,7 +16,7 @@ $(TARGET) : $(OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(SRC) $(LIBS) 
 
 $(OBJ) :
-	/usr/local/cuda/bin/nvcc -c $(GENCODE_SM61) $(GENCODE_SM70) gameoflife_copy.cu
+	/usr/local/cuda/bin/nvcc -c $(GENCODE_SM61) $(GENCODE_SM70) gameoflife.cu
 
 clean :
 	rm *.o glife 

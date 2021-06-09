@@ -3,6 +3,7 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <cuda_runtime.h>
 
 #define MAX_THREAD  24
 /*
@@ -21,8 +22,9 @@ int nprocs, display, gen, width, height;
 int** arr;
 int** tmp;
 pthread_barrier_t tbarrier;
+struct timespec begin, end;
 
-//void CUDA();
+//CUDA
 void dump(); 
 
 //single & multi thread
@@ -36,19 +38,21 @@ typedef struct{
     int end;
 } bound;
 
-struct timespec begin, end;
-
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
     FILE *fp;
     char buffer[20];
-    int x, y;
-    char *x_map, *y_map;
+    int x, y, size, length;
+    //This is for convert 2d array to 1d
+    int *mat_1d, *mat_1d_tmp;
+    int *cuda_mem, *cuda_tmp;
 
+    char *x_map, *y_map;
 
     if(argc!=7){
         printf("Parameter Error!\n");
         printf("./glife <input file> <display> <nprocs> <# of generation> <width> <height>\n");
+        exit(1);
     }
 
     display = atoi(argv[2]);
@@ -66,12 +70,20 @@ int main(int argc, char *argv[]){
     for(int i=0; i<height+2; i++){
         tmp[i] = (int*)malloc(sizeof(int) * (width+2));
     }
+    
+    //length = (height+2) * (width+2);
+    size = (height+2) * (width+2) * sizeof(int);
 
-    //Initiate
+    mat_1d = (int*)malloc(size);
+    mat_1d_tmp = (int*)malloc(size);
+
+    //Initialize
     for(int a=0; a<height+2; a++){
         for(int b=0; b<width+2; b++){
-            arr[a][b]=0;
-            tmp[a][b]=0;
+            arr[a][b] = 0;
+            tmp[a][b] = 0;
+            mat_1d[a*(width+2)+b] = 0;
+            mat_1d_tmp[a*(width+2)+b] = 0;
         }
     }
 
@@ -87,16 +99,37 @@ int main(int argc, char *argv[]){
         y = atoi(y_map);        
         x = atoi(x_map);
 
-        arr[x][y]=1;
+        arr[x][y] = 1;
+        mat_1d[x*(width+2) +y] = 1;
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &begin);
 
     if(nprocs == 0){
         //CUDA
-        
 
+        cudaMalloc(&cuda_mem, size);
+        cudaMalloc(&cuda_tmp, size);
+	
+	cudaMemcpy(cuda_mem, mat_1d, size, cudaMemcpyHostToDevice);
+	cudaMemcpy(cuda_tmp, mat_1d_tmp, size, cudaMemcpyHostToDevice);
 
+	for(int i=0; i<gen; i++){	
+	        //Kernel code
+	        my_kernel<<<  height+2 , width+2  >>>(cuda_mem, cuda_tmp, height+2, width+2, gen);
+		cudaDeviceSynchronize();
+	}
+	cudaMemcpy(mat_1d, cuda_mem, size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(mat_1d_tmp, cuda_tmp, size, cudaMemcpyDeviceToHost);
 
+    	clock_gettime(CLOCK_MONOTONIC, &end);
+        for(int i=0;i<height+2;i++){
+            for(int j=0;j<width+2;j++){
+                arr[i][j] = mat_1d[i*(width+2) +j ];
+            }
+        }
     }else{
+	
         //SINGLE AND MULTI THREAD
         //Divide height into nprocs pieces
         bound section[MAX_THREAD];
@@ -117,9 +150,7 @@ int main(int argc, char *argv[]){
             }
         }
 
-	pthread_barrier_init(&tbarrier, NULL, nprocs);
-	
-	clock_gettime(CLOCK_MONOTONIC, &begin);
+		pthread_barrier_init(&tbarrier, NULL, nprocs);
 
         for(int i=0; i<nprocs; i++){
             pthread_create(&thread[i], NULL, Thread, &section[i]);
@@ -128,9 +159,10 @@ int main(int argc, char *argv[]){
         for(int j=0; j<nprocs; j++){
             pthread_join(thread[j], NULL);
         }
+    	clock_gettime(CLOCK_MONOTONIC, &end);
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
+    //clock_gettime(CLOCK_MONOTONIC, &end);
 	printf("Execution time : %2.3f sec\n",(end.tv_sec - begin.tv_sec)+(end.tv_nsec-begin.tv_nsec)/1000000000.0);
 
     if(display == 1){
@@ -141,11 +173,15 @@ int main(int argc, char *argv[]){
 
     free(arr);
     free(tmp);
+    free(mat_1d);
+    free(mat_1d_tmp);
+    cudaFree(cuda_mem);
+    cudaFree(cuda_tmp);
 
     return 0;
 }
 
-void* Thread(void *args){
+void *Thread(void *args){
     //get args with struct
     bound *section = (bound*)args;
     
