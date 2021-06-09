@@ -3,7 +3,6 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
-#include <cuda_runtime.h>
 
 #define MAX_THREAD  24
 /*
@@ -60,11 +59,8 @@ __global__ void my_kernel(int *cuda_mem, int *cuda_tmp, int height, int width, i
         }else{
            cuda_tmp[index] = cudaNeighbor(cuda_mem, index, width);
         }
-	__syncthreads();
         cuda_mem[index] = cuda_tmp[index];
-	__syncthreads();
 	cuda_tmp[index] = 0;
-	__syncthreads();
 }
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
