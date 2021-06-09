@@ -5,8 +5,8 @@ GENCODE_SM70 = -gencode=arch=compute_70,code=\"sm_70,compute_70\"
 CXX = g++
 CXXFLAGS = -Wall -std=c++0x
 TARGET = glife 
-OBJ = glife.o
-SRC = glife.c
+OBJ = gameoflife.o
+SRC = gameoflife.c
 LIBS = -pthread -L/usr/local/cuda/lib64 -lcuda -lcudart
 .PHONY : $(TARGET) $(OBJ)
 

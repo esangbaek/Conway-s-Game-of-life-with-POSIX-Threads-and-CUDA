@@ -53,18 +53,18 @@ __device__ int cudaNeighbor(int *mem, int index, int width){
     }
 }
 
-__global__ void my_kernel(int *mem, int *tmp, int height, int width, int gen){
+__global__ void my_kernel(int *cuda_mem, int *cuda_tmp, int height, int width, int gen){
 	int index = threadIdx.x + blockIdx.x * blockDim.x;
-    printf("width %d\n", blockDim.x);
-	
-    for(int i=0; i<gen; i++){
         if(blockIdx.x == 0 || blockIdx.x == height-1 || threadIdx.x == 0 || threadIdx.x == width-1){
             //Do nothing
         }else{
-            tmp[index] = cudaNeighbor(mem, index, width);
+           cuda_tmp[index] = cudaNeighbor(cuda_mem, index, width);
         }
-        mem[index] = tmp[index];
-    }
+	__syncthreads();
+        cuda_mem[index] = cuda_tmp[index];
+	__syncthreads();
+	cuda_tmp[index] = 0;
+	__syncthreads();
 }
 int main(int argc, char *argv[]){
     pthread_t thread[MAX_THREAD];
@@ -138,16 +138,19 @@ int main(int argc, char *argv[]){
 
         cudaMalloc(&cuda_mem, size);
         cudaMalloc(&cuda_tmp, size);
+	
+	cudaMemcpy(cuda_mem, mat_1d, size, cudaMemcpyHostToDevice);
+	cudaMemcpy(cuda_tmp, mat_1d_tmp, size, cudaMemcpyHostToDevice);
 
-        cudaMemcpy(cuda_mem, mat_1d, size, cudaMemcpyHostToDevice);
-        cudaMemcpy(cuda_tmp, mat_1d_tmp, size, cudaMemcpyHostToDevice);
+	for(int i=0; i<gen; i++){	
+	        //Kernel code
+	        my_kernel<<<  height+2 , width+2  >>>(cuda_mem, cuda_tmp, height+2, width+2, gen);
+		cudaDeviceSynchronize();
+	}
+	cudaMemcpy(mat_1d, cuda_mem, size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(mat_1d_tmp, cuda_tmp, size, cudaMemcpyDeviceToHost);
 
-        //Kernel code
-        my_kernel<<<  height+2 , width+2  >>>(cuda_mem, cuda_tmp, height+2, width+2, gen);
-
-        cudaMemcpy(mat_1d, cuda_mem, size, cudaMemcpyDeviceToHost);
-        cudaMemcpy(mat_1d_tmp, cuda_tmp, size, cudaMemcpyDeviceToHost);
-
+    	clock_gettime(CLOCK_MONOTONIC, &end);
         for(int i=0;i<height+2;i++){
             for(int j=0;j<width+2;j++){
                 arr[i][j] = mat_1d[i*(width+2) +j ];
@@ -184,9 +187,10 @@ int main(int argc, char *argv[]){
         for(int j=0; j<nprocs; j++){
             pthread_join(thread[j], NULL);
         }
+    	clock_gettime(CLOCK_MONOTONIC, &end);
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
+    //clock_gettime(CLOCK_MONOTONIC, &end);
 	printf("Execution time : %2.3f sec\n",(end.tv_sec - begin.tv_sec)+(end.tv_nsec-begin.tv_nsec)/1000000000.0);
 
     if(display == 1){
