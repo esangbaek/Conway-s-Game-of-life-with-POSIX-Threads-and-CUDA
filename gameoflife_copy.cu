@@ -137,16 +137,19 @@ int main(int argc, char *argv[]){
 	
 	cudaMemcpy(cuda_mem, mat_1d, size, cudaMemcpyHostToDevice);
 	cudaMemcpy(cuda_tmp, mat_1d_tmp, size, cudaMemcpyHostToDevice);
+	
+    	clock_gettime(CLOCK_MONOTONIC, &begin);
 
 	for(int i=0; i<gen; i++){	
 	        //Kernel code
 	        my_kernel<<<  height+2 , width+2  >>>(cuda_mem, cuda_tmp, height+2, width+2, gen);
 		cudaDeviceSynchronize();
 	}
+    	clock_gettime(CLOCK_MONOTONIC, &end);
+
 	cudaMemcpy(mat_1d, cuda_mem, size, cudaMemcpyDeviceToHost);
 	cudaMemcpy(mat_1d_tmp, cuda_tmp, size, cudaMemcpyDeviceToHost);
 
-    	clock_gettime(CLOCK_MONOTONIC, &end);
         for(int i=0;i<height+2;i++){
             for(int j=0;j<width+2;j++){
                 arr[i][j] = mat_1d[i*(width+2) +j ];
@@ -183,17 +186,18 @@ int main(int argc, char *argv[]){
         for(int j=0; j<nprocs; j++){
             pthread_join(thread[j], NULL);
         }
+
+    	pthread_barrier_destroy(&tbarrier);
+
     	clock_gettime(CLOCK_MONOTONIC, &end);
     }
 
-    //clock_gettime(CLOCK_MONOTONIC, &end);
+	clock_gettime(CLOCK_MONOTONIC, &end);
 	printf("Execution time : %2.3f sec\n",(end.tv_sec - begin.tv_sec)+(end.tv_nsec-begin.tv_nsec)/1000000000.0);
 
     if(display == 1){
         dump();
     }
-    
-    pthread_barrier_destroy(&tbarrier);
 
     free(arr);
     free(tmp);
@@ -201,7 +205,8 @@ int main(int argc, char *argv[]){
     free(mat_1d_tmp);
     cudaFree(cuda_mem);
     cudaFree(cuda_tmp);
-
+	
+    printf("Before close\n");
     return 0;
 }
 
