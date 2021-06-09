@@ -11,7 +11,7 @@
 1    o@@@@@@@@o      Problem solving example
 2    o@@@@@@@@o      8 * 6 matrix
 3    o@@@@@@@@o      + 1px padding around matrix
-4    o@@@@@@@@o      and use 3 * 3 filter
+4    o@@@@@@@@o      
 5    o@@@@@@@@o
 6    o@@@@@@@@o
 7    oooooooooo
@@ -23,7 +23,7 @@ int** tmp;
 pthread_barrier_t tbarrier;
 struct timespec begin, end;
 
-//CUDA
+//CUDA and Thread
 void dump(); 
 
 //single & multi thread
